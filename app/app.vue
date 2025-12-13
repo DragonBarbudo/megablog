@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { useSiteStore } from '~/app/stores/site';
+import { useSiteStore } from '~/stores/site';
 
 const siteStore = useSiteStore();
 
 // Watch for site changes and update CSS variables
 watchEffect(() => {
-  if (siteStore.site?.theme_config) {
+  if (import.meta.client && siteStore.site?.theme_config) {
     const theme = siteStore.site.theme_config;
     const root = document.documentElement;
     

@@ -26,15 +26,14 @@ export const generateText = async (prompt: string, model = 'gpt-4o') => {
 
 export const generateImage = async (prompt: string) => {
     try {
-        // Using result from Fal.ai > z-image (fal-ai/flux/dev or similiar, user said "z-image", might mean flux-realism or similar? fal.ai has many models. I will use flux-pro or dev as high quality default)
-        // User mentioned "z-image". I'll search if there is a specific 'z-image' model or if it's a typo/internal name. Assuming 'fal-ai/flux/dev' as safe high quality default.
-        // Or "fast-lightning-sdxl". I'll stick to a high quality one.
-        const result: any = await fal.subscribe('fal-ai/flux/dev', {
+        // Using 'fal-ai/z-image/turbo' as requested
+        const result: any = await fal.subscribe('fal-ai/z-image/turbo', {
             input: {
                 prompt: prompt,
-                image_size: 'landscape_16_9',
-                num_inference_steps: 30, // Basic quality
-                enable_safety_checker: true
+                // image_size: 'landscape_16_9', // z-image might have different params?
+                // Standard params usually work, but let's check basic ones. 
+                // Documentation passed by user shows just 'prompt' in the example.
+                // We will stick to simple prompt first.
             },
             logs: true,
             onQueueUpdate: (update) => {
@@ -44,9 +43,15 @@ export const generateImage = async (prompt: string) => {
             },
         });
 
-        // result.images is array of { url: string, ... }
-        if (result.images && result.images.length > 0) {
-            return result.images[0].url;
+        // result.data.images is array of { url: string, ... }
+        // For z-image/turbo, the structure is { data: { images: [...] } }
+        // But for other models it might be just { images: [...] }? 
+        // Let's handle both or check 'data'.
+
+        const images = result.data?.images || result.images;
+
+        if (images && images.length > 0) {
+            return images[0].url;
         }
         return null;
     } catch (error) {

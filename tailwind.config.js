@@ -18,9 +18,12 @@ export default {
         text: 'var(--color-text)',
       },
       fontFamily: {
-        sans: ['var(--font-family)', 'sans-serif'],
+        sans: ['Inter', 'var(--font-family)', 'sans-serif'],
+        serif: ['Merriweather', 'serif'],
       }
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
 }

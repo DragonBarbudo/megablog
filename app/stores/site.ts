@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import type { Site } from '~/app/types';
+import type { Site } from '~/types';
 
 export const useSiteStore = defineStore('site', {
     state: () => ({

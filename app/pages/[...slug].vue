@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useSiteStore } from '~/app/stores/site';
+import { useSiteStore } from '~/stores/site';
 
 const route = useRoute();
 const siteStore = useSiteStore();

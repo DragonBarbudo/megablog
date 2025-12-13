@@ -1,10 +1,20 @@
-import { useSiteStore } from '~/app/stores/site';
+import { useSiteStore } from '~/stores/site';
 
 export default defineNuxtRouteMiddleware(async (to, from) => {
     if (process.server) {
         const siteStore = useSiteStore();
         const event = useRequestEvent();
-        const host = event?.node.req.headers.host || 'localhost';
+        let host = event?.node.req.headers.host || 'localhost';
+
+        // Developer Experience: Map localhost to example.com for checking generated site
+        if (host.includes('localhost') || host.includes('127.0.0.1')) {
+            // Optionally allow overriding via query param ?site=domain.com? No, simple is best.
+            // We will pretend we are on example.com if no site is found for localhost
+            // But better: Just hardcode the fallthrough.
+            // Or check if localhost exists in DB?
+            // User requested: "Lets use example.com as the default site."
+            host = 'example.com';
+        }
 
         await siteStore.fetchSite(host);
 

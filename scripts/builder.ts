@@ -1,7 +1,9 @@
 
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
-import { generateText, generateImage } from '../server/utils/ai';
+import { generateText, generateImage } from '../app/server/utils/ai';
+import { processAndUploadImage } from '../app/server/utils/storage';
+import { sanitizeContent, processContentImages } from '../app/server/utils/content-processor';
 
 // Initialize Supabase Admin Client
 const supabaseUrl = process.env.SUPABASE_URL!;
@@ -28,9 +30,20 @@ async function main() {
     console.log('... Generating Theme & Config');
     const configPrompt = `Generate a JSON configuration for a blog about "${niche}". 
     The JSON should have:
-    - description: A short SEO description (max 160 chars).
-    - theme_config: { primaryColor, secondaryColor, accentColor, fontFamily (Google Font name) }.
-    - socials: { twitter, facebook, instagram } (use placeholder URLs).
+    - description: A short SEO description in Mexican Spanish (max 160 chars).
+    - theme_config: { 
+        primaryColor, secondaryColor, accentColor, fontFamily (Google Font name),
+        contact_info: {
+            why_us: ["reason 1", "reason 2", "reason 3"],
+            hours: ["Lunes - Viernes: 9am - 6pm", "Sábado: 10am - 2pm"],
+            coverage: { 
+                center: { lat: 19.4326, lng: -99.1332 }, 
+                places: ["CDMX", "Polanco", "Condesa"] 
+            },
+            faqs: [ { question: "Q1", answer: "A1" } ] (10 questions in Spanish)
+        }
+    }.
+    - socials: { twitter, facebook, instagram, email, phone, whatsapp } (use placeholder URLs/numbers).
     Return ONLY valid JSON.`;
 
     const configRaw = await generateText(configPrompt);
@@ -49,46 +62,79 @@ async function main() {
     if (siteError) throw siteError;
     console.log(`✅ Site created: ${site.id}`);
 
-    // 3. Generate Home Page Content
-    console.log('... Generating Home Page');
-    const homeContent = await generateText(`Write HTML content for the home page welcome section of a blog about ${niche}. Use <h2> and <p> tags. Keep it welcoming and engaging.`);
+    // 3. Generate "Inicio" (Home)
+    console.log('... Generating Inicio Page');
+    const homeContent = await generateText(`Write content in Markdown format for the 'Inicio' page of a business/blog about ${niche}. Use ## for headers. Tone: Professional, welcoming, Mexican Spanish. Cover the main value proposition.`);
 
     const { error: pageError } = await supabase.from('pages').upsert({
         site_id: site.id,
-        slug: 'home', // or just use index logic in frontend
-        title: 'Home',
+        slug: 'home', // Keeping 'home' slug internally for index
+        title: 'Inicio',
         content: homeContent,
-        seo_tags: { title: name, description: config.description }
+        seo_tags: { title: `Inicio - ${name}`, description: config.description }
     }, { onConflict: 'site_id, slug' });
 
     if (pageError) console.error('Error creating home page:', pageError);
 
-    // 4. Generate About Page
-    console.log('... Generating About Page');
-    const aboutContent = await generateText(`Write HTML content for an 'About Us' page for a blog named "${name}" about ${niche}. Professional and trustworthy tone.`);
+    // 4. Generate "Nosotros" (About)
+    console.log('... Generating Nosotros Page');
+    const aboutContent = await generateText(`Write a compelling 'History of Creation' story for a business named "${name}" in the "${niche}" industry. 
+    Format: Markdown. 
+    Tone: Inspiring, professional, Mexican Spanish.
+    Structure:
+    - Our Origins (Nuestros Orígenes)
+    - The Mission (La Misión)
+    - The Team (El Equipo)
+    `);
 
     await supabase.from('pages').upsert({
         site_id: site.id,
-        slug: 'about',
-        title: 'About Us',
+        slug: 'nosotros',
+        title: 'Nosotros',
         content: aboutContent,
-        seo_tags: { title: `About - ${name}` }
+        seo_tags: { title: `Nosotros - ${name}` }
     }, { onConflict: 'site_id, slug' });
 
-    // 5. Generate Blog Posts
-    console.log('... Generating 10 Blog Post Ideas');
-    const ideasRaw = await generateText(`Generate 10 blog post ideas for the niche "${niche}". Return a JSON array of objects with keys: title, slug, excerpt. Return ONLY valid JSON.`);
+    // 5. Generate Blog Posts (Experiencias)
+    console.log('... Generating 4 Blog Post Ideas in Spanish');
+    const ideasRaw = await generateText(`Generate 4 blog post ideas in mexican spanish for the niche "${niche}". Return a JSON array of objects with keys: title, slug, excerpt. Return ONLY valid JSON.`);
     const ideas = JSON.parse(ideasRaw?.replace(/```json|```/g, '').trim() || '[]');
 
     for (const [index, post] of ideas.entries()) {
-        console.log(`[${index + 1}/10] Generating Post: ${post.title}`);
+        console.log(`[${index + 1}/4] Generating Post: ${post.title}`);
 
-        // Generate Content
-        const content = await generateText(`Write a comprehensive blog post (HTML format, use <h2>, <h3>, <p>, <ul>) for the title: "${post.title}". logic: Niche is ${niche}. Make it SEO optimized, at least 800 words.`);
+        // Generate Content with Placeholders
+        const contentPrompt = `Write a comprehensive blog post in Markdown format for the title: "${post.title}". 
+        logic: Niche is ${niche}. Make it SEO optimized, at least 800 words in mexican spanish. Use ## and ### for headers.
+        
+        IMPORTANT: Include at least 3 images. To include an image, write a placeholder on its own line like this:
+        [IMAGE: description of the image scene]
+        
+        Place these image placeholders naturally between paragraphs where relevant.`;
 
-        // Generate Image
-        console.log(`   - Generating Image...`);
-        const imageUrl = await generateImage(`Hyper-realistic photography, ${niche}, ${post.title}, high quality, 8k, cinematic lighting`);
+        const rawContent = await generateText(contentPrompt);
+
+        // Sanitize
+        const sanitizedContent = sanitizeContent(rawContent || '');
+
+        // Generate Cover Image
+        console.log(`   - Generating Cover Image...`);
+        const falImageUrl = await generateImage(`Hyper-realistic photography, ${niche}, ${post.title}, high quality, 8k, cinematic lighting`);
+        console.log(`   - Fal Image URL: ${falImageUrl}`);
+        let finalCoverUrl = falImageUrl;
+
+        if (falImageUrl) {
+            // Process Image (Convert & Upload)
+            const filename = `${Date.now()}-${post.slug}-cover`;
+            const uploadedUrl = await processAndUploadImage(falImageUrl, filename);
+            if (uploadedUrl) {
+                finalCoverUrl = uploadedUrl;
+            }
+        }
+
+        // Process Inline Images
+        console.log('   - Processing Inline Images...');
+        const finalContent = await processContentImages(sanitizedContent, niche);
 
         // Insert Post
         const { error: postError } = await supabase.from('posts').upsert({
@@ -96,8 +142,8 @@ async function main() {
             slug: post.slug,
             title: post.title,
             excerpt: post.excerpt,
-            content: content,
-            cover_image_url: imageUrl,
+            content: finalContent, // No duplicate cover
+            cover_image_url: finalCoverUrl,
             published_at: new Date().toISOString(),
             seo_tags: { title: post.title, description: post.excerpt }
         }, { onConflict: 'site_id, slug' });

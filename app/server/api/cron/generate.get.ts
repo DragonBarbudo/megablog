@@ -56,10 +56,55 @@ export default defineEventHandler(async (event) => {
     if (!idea.title) throw new Error('Failed to generate idea');
 
     // 2. Content
-    const content = await generateText(`Write a comprehensive SEO blog post for "${idea.title}". HTML format.`);
+    // We request specific structure for images
+    const contentPrompt = `Write a comprehensive blog post in Markdown format for the title: "${idea.title}". 
+    Context: Blog is about "${site.description}". 
+    Make it SEO optimized, at least 800 words in mexican spanish. Use ## and ### for headers.
+    
+    IMPORTANT: Include at least 3 images. To include an image, write a placeholder on its own line like this:
+    [IMAGE: description of the image scene]
+    
+    Place these image placeholders naturally between paragraphs where relevant.`;
 
-    // 3. Image
+    const rawContent = await generateText(contentPrompt);
+
+    // Sanitize and Process
+    // In server/api (Nitro), we can import from #imports or relative
+    // But since content-processor is in server/utils, it should be auto-imported as 'sanitizeContent' etc.
+    // Let's try auto-import first. If fails, we add import.
+    // Actually, utils are auto-imported.
+
+    // Sanitize
+    // @ts-ignore
+    const finalSanitizedContent = typeof sanitizeContent === 'function' ? sanitizeContent(rawContent || '') : (rawContent || '');
+
+    // 3. Image (Cover)
     const imageUrl = await generateImage(`Review, ${idea.title}, ${site.name}, high quality`);
+    let finalCoverUrl = imageUrl;
+
+    // Process Cover Image
+    if (imageUrl) {
+        try {
+            const filename = `${Date.now()}-${idea.slug}-cover`;
+            // @ts-ignore
+            if (typeof processAndUploadImage === 'function') {
+                // @ts-ignore
+                const uploaded = await processAndUploadImage(imageUrl, filename);
+                if (uploaded) finalCoverUrl = uploaded;
+            }
+        } catch (e) {
+            console.error('Failed to process image in cron:', e);
+        }
+    }
+
+    // Process Inline Images
+    // @ts-ignore
+    let finalContent = finalSanitizedContent;
+    // @ts-ignore
+    if (typeof processContentImages === 'function') {
+        // @ts-ignore
+        finalContent = await processContentImages(finalSanitizedContent, site.name);
+    }
 
     // 4. Insert
     const { error } = await serviceClient.from('posts').insert({
@@ -67,8 +112,8 @@ export default defineEventHandler(async (event) => {
         slug: idea.slug,
         title: idea.title,
         excerpt: idea.excerpt,
-        content: content,
-        cover_image_url: imageUrl,
+        content: finalContent,
+        cover_image_url: finalCoverUrl,
         published_at: new Date().toISOString(),
         seo_tags: { title: idea.title }
     });

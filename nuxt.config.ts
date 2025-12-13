@@ -2,11 +2,21 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+  srcDir: 'app',
   modules: [
     '@nuxtjs/tailwindcss',
+    '@pinia/nuxt',
     '@nuxtjs/supabase',
-    '@pinia/nuxt'
+    '@nuxtjs/google-fonts'
   ],
+
+  googleFonts: {
+    families: {
+      Inter: [300, 400, 500, 600, 700],
+      Merriweather: [300, 400, 700],
+    },
+    display: 'swap'
+  },
   supabase: {
     redirect: false
   },
