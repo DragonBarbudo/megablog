@@ -75,8 +75,9 @@ const getIcon = (network: string) => {
                 <h4 class="font-semibold text-gray-900 mb-4">Explorar</h4>
                 <div class="flex flex-col space-y-2 text-sm text-gray-500">
                     <NuxtLink to="/" class="hover:text-primary">Inicio</NuxtLink>
-                    <NuxtLink to="/about" class="hover:text-primary">Acerca de</NuxtLink>
-                    <a href="#" class="hover:text-primary">Política de Privacidad</a>
+                    <NuxtLink to="/nosotros" class="hover:text-primary">Nosotros</NuxtLink>
+                    <NuxtLink to="/experiencias" class="hover:text-primary">Experiencias</NuxtLink>
+                    <NuxtLink to="/contacto" class="hover:text-primary">Contacto</NuxtLink>
                 </div>
           </div>
           

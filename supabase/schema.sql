@@ -51,3 +51,17 @@ create policy "Allow public read access on posts" on public.posts for select usi
 
 -- (Optional) Write access for service role is implicit, but we can be explicit if using anon key with specific logic. 
 -- For the "builder" script, we will use the Service Key, which bypasses RLS.
+
+-- Subscribers Table
+create table public.subscribers (
+  id uuid default uuid_generate_v4() primary key,
+  site_id uuid references public.sites(id) on delete cascade not null,
+  email text not null,
+  created_at timestamp with time zone default now(),
+  unique(site_id, email)
+);
+
+-- RLS for Subscribers
+alter table public.subscribers enable row level security;
+-- Only service role can select/delete (for sending emails etc), anon can insert (subscribe)
+create policy "Allow anon insert to subscribers" on public.subscribers for insert with check (true);

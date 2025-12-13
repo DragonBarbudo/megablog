@@ -41,13 +41,30 @@ async function main() {
                 places: ["CDMX", "Polanco", "Condesa"] 
             },
             faqs: [ { question: "Q1", answer: "A1" } ] (10 questions in Spanish)
-        }
+        },
+        testimonials: [
+             { text: "Great service...", author: "Name", role: "CEO" },
+             { text: "Amazing...", author: "Name", role: "Manager" },
+             { text: "Recommended...", author: "Name", role: "Client" }
+        ] (3 realistic testimonials in Mexican Spanish)
     }.
     - socials: { twitter, facebook, instagram, email, phone, whatsapp } (use placeholder URLs/numbers).
     Return ONLY valid JSON.`;
 
     const configRaw = await generateText(configPrompt);
     const config = JSON.parse(configRaw?.replace(/```json|```/g, '').trim() || '{}');
+
+    // ... Generate About/Team Image
+    console.log('... Generating Brand/About Image');
+    const aboutImageUrl = await generateImage(`Professional team photo or modern office for ${name}, ${niche}, warm lighting, photorealistic, high resolution`);
+    let finalAboutImageUrl = aboutImageUrl;
+
+    if (aboutImageUrl) {
+        const uploaded = await processAndUploadImage(aboutImageUrl, `${Date.now()}-about-image`);
+        if (uploaded) finalAboutImageUrl = uploaded;
+    }
+
+    config.theme_config.about_image_url = finalAboutImageUrl;
 
     // 2. Insert Site
     console.log('... Creating Site in DB');

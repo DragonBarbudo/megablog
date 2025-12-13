@@ -1,9 +1,7 @@
-
-
 <script setup lang="ts">
 import { useSiteStore } from '~/stores/site';
 import { md } from '~/utils/markdown';
-import { ArrowRight, Calendar, Clock } from 'lucide-vue-next';
+import { ArrowRight, Calendar, Clock, CheckCircle, Mail, MessageCircle } from 'lucide-vue-next';
 
 const siteStore = useSiteStore();
 const { data: page } = await useAsyncData('home-page', async () => {
@@ -26,6 +24,39 @@ const gridPosts = computed(() => posts.value?.slice(1) || []);
 const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
 }
+
+// Newsletter
+const email = ref('');
+const subscribeStatus = ref('');
+const subscribe = async () => {
+    if (!email.value) return;
+    try {
+        const { data, error } = await useFetch('/api/newsletter', {
+            method: 'POST',
+            body: { email: email.value, site_id: siteStore.site?.id }
+        });
+        
+        if (error.value) {
+            console.error(error.value);
+            subscribeStatus.value = 'Ocurrió un error. Intenta de nuevo.';
+            return;
+        }
+
+        if (data.value) {
+             subscribeStatus.value = data.value.message || '¡Gracias por suscribirte!';
+             email.value = '';
+        }
+    } catch (e) {
+        subscribeStatus.value = 'Ocurrió un error. Intenta de nuevo.';
+    }
+}
+
+// Mock Testimonials (Ideally from DB or Config)
+const testimonials = [
+    { text: "Excelente servicio y atención. Totalmente recomendado.", author: "Maria Gonzalez" },
+    { text: "El contenido es de primera calidad y muy útil.", author: "Juan Perez" },
+    { text: "Una experiencia única, volveré sin duda.", author: "Sofia Rodriguez" }
+];
 </script>
 
 <template>
@@ -36,19 +67,27 @@ const formatDate = (dateString: string) => {
         <div class="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
         <div class="absolute bottom-0 left-0 w-64 h-64 bg-accent/10 rounded-full blur-3xl"></div>
         
-        <div class="max-w-4xl mx-auto text-center">
+        <div class="max-w-4xl mx-auto text-center" v-if="page">
             <span class="inline-block py-1 px-3 rounded-full bg-white border border-gray-200 text-xs font-semibold text-primary uppercase tracking-wider mb-6 shadow-sm">
                 {{ siteStore.site?.name }}
             </span>
             <h1 class="text-5xl md:text-7xl font-bold mb-6 tracking-tight text-gray-900 leading-tight">
-                {{ siteStore.site?.description || 'Discover amazing stories.' }}
+                {{ siteStore.site?.description || 'Bienvenido' }}
             </h1>
-            <p v-if="page" class="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed mb-10">
-               <!-- Extracting text from markdown effectively is hard without rendering, so we just put a generic invite or render small part if needed. 
-                    For now, forcing a clean subheader. -->
-               Explora lo último en tendencias, análisis y opiniones.
-            </p>
-             <!-- <div v-html="md.render(page.content)" class="prose prose-lg mx-auto text-gray-600"></div> -->
+            
+            <div class="prose prose-lg mx-auto text-gray-600 mb-10">
+                 <!-- Render Home Page Content from DB, ensuring we strip markdown code blocks -->
+                 <div v-html="md.render(page.content.replace(/^```(markdown|md)?\s*/i, '').replace(/\s*```$/, ''))"></div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <NuxtLink to="/experiencias" class="px-8 py-3 bg-primary text-white rounded-full font-bold hover:bg-primary-600 transition shadow-lg shadow-primary/25">
+                    Explorar Experiencias
+                </NuxtLink>
+                <NuxtLink to="/contacto" class="px-8 py-3 bg-white text-gray-900 border border-gray-200 rounded-full font-bold hover:bg-gray-50 transition">
+                    Contáctanos
+                </NuxtLink>
+            </div>
         </div>
     </section>
 
@@ -77,8 +116,28 @@ const formatDate = (dateString: string) => {
             </NuxtLink>
         </section>
 
+        <!-- Mini Nosotros -->
+        <section class="mb-24 grid grid-cols-1 md:grid-cols-2 gap-12 items-center bg-gray-50 p-8 rounded-3xl">
+             <div>
+                 <h2 class="text-3xl font-bold text-gray-900 mb-6">Sobre Nosotros</h2>
+                 <p class="text-gray-600 mb-6 leading-relaxed">
+                     Somos un equipo apasionado dedicado a explorar y compartir lo mejor del mundo de {{ siteStore.site?.name }}. 
+                     Nuestra misión es informar, inspirar y conectar.
+                 </p>
+                 <NuxtLink to="/nosotros" class="inline-flex items-center text-primary font-bold hover:underline">
+                     Conocer más <ArrowRight class="ml-2 w-4 h-4" />
+                 </NuxtLink>
+             </div>
+             <div class="h-64 bg-gray-200 rounded-2xl overflow-hidden relative group">
+                 <img v-if="siteStore.site?.theme_config?.about_image_url" :src="siteStore.site.theme_config.about_image_url" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Nosotros" />
+                 <div v-else class="absolute inset-0 flex items-center justify-center text-gray-400 font-bold text-xl">
+                     Imagen Nosotros
+                 </div>
+             </div>
+        </section>
+
         <!-- Grid Posts -->
-        <section>
+        <section class="mb-24">
             <div class="flex items-center justify-between mb-8">
                 <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
                     <Clock class="w-6 h-6 text-primary" />
@@ -98,7 +157,6 @@ const formatDate = (dateString: string) => {
                     </div>
                     
                     <div class="p-6 flex flex-col flex-grow">
-                        <div class="text-xs font-semibold text-primary mb-3 uppercase tracking-wide">Article</div>
                         <h3 class="text-xl font-bold text-gray-900 mb-3 leading-snug group-hover:text-primary transition-colors">
                             {{ post.title }}
                         </h3>
@@ -114,6 +172,49 @@ const formatDate = (dateString: string) => {
                 </NuxtLink>
             </div>
         </section>
+
+        <!-- Testimonials -->
+        <section class="mb-24 py-12">
+            <h2 class="text-3xl font-bold text-gray-900 mb-10 text-center">Clientes Satisfechos</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div v-for="(t, i) in (siteStore.site?.theme_config?.testimonials || testimonials)" :key="i" class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center hover:-translate-y-1 transition hover:shadow-lg">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 text-yellow-500">
+                        ★★★★★
+                    </div>
+                    <p class="text-gray-600 italic mb-6 leading-relaxed">"{{ t.text }}"</p>
+                    <h4 class="font-bold text-gray-900">{{ t.author }}</h4>
+                    <span class="text-xs text-xs text-gray-400" v-if="t.role">{{ t.role }}</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Newsletter & CTAs -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            <!-- Newsletter -->
+            <div class="bg-gray-900 text-white p-10 rounded-3xl">
+                <h3 class="text-2xl font-bold mb-4">Suscríbete a nuestro newsletter</h3>
+                <p class="text-gray-400 mb-6">Recibe las últimas noticias y actualizaciones directamente en tu correo.</p>
+                <form @submit.prevent="subscribe" class="flex flex-col gap-3">
+                    <input v-model="email" type="email" name="email" id="email-subscribe" autocomplete="email" placeholder="Tu correo electrónico" class="px-4 py-3 rounded-xl bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:ring-primary focus:border-primary" required />
+                    <button type="submit" class="bg-primary text-white font-bold py-3 rounded-xl hover:bg-primary-600 transition">
+                        Suscribirse
+                    </button>
+                    <p v-if="subscribeStatus" class="text-sm text-green-400 mt-2">{{ subscribeStatus }}</p>
+                </form>
+            </div>
+
+            <!-- WhatsApp CTA -->
+            <div class="bg-green-600 text-white p-10 rounded-3xl flex flex-col justify-center items-center text-center">
+                <h3 class="text-2xl font-bold mb-4">¿Tienes dudas?</h3>
+                <p class="text-white/90 mb-8">Contáctanos directamente por WhatsApp para una atención personalizada.</p>
+                 <a v-if="siteStore.site?.socials?.whatsapp" :href="siteStore.site.socials.whatsapp" target="_blank" 
+                  class="inline-flex items-center gap-3 bg-white text-green-600 text-lg font-bold py-4 px-8 rounded-full hover:bg-gray-100 transition shadow-xl transform hover:-translate-y-1">
+                   <span class="text-2xl">💬</span> Chat en WhatsApp
+               </a>
+               <NuxtLink v-else to="/contacto" class="underline hover:text-white/80">Ir a contacto</NuxtLink>
+            </div>
+        </section>
+
     </div>
   </div>
 </template>

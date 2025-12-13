@@ -1,8 +1,14 @@
+// Shim for deprecated SUPABASE_SERVICE_KEY warning
+if (process.env.SUPABASE_SERVICE_KEY && !process.env.SUPABASE_SECRET_KEY) {
+  process.env.SUPABASE_SECRET_KEY = process.env.SUPABASE_SERVICE_KEY;
+}
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   srcDir: 'app',
+  serverDir: 'app/server',
   modules: [
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
@@ -21,7 +27,9 @@ export default defineNuxtConfig({
     redirect: false
   },
   runtimeConfig: {
-    supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY,
+    // Expose keys to server-side
+    supabaseSecretKey: process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_KEY,
+    supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY, // Keep for backward compat code
     openaiApiKey: process.env.OPENAI_API_KEY,
     falKey: process.env.FAL_KEY,
     cloudflareAccountId: process.env.CLOUDFLARE_ACCOUNT_ID,

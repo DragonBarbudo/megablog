@@ -7,7 +7,15 @@ import { processAndUploadImage } from './storage';
  */
 export function sanitizeContent(content: string): string {
     // Remove wrapping ```markdown ... ``` or ``` ... ```
-    return content.replace(/^```(markdown|md)?\n/i, '').replace(/\n```$/, '');
+    // Case insensitive, matching start/end of string with lenient whitespace
+    let cleaned = content.trim();
+    if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/^```(markdown|md)?\s*/i, '');
+    }
+    if (cleaned.endsWith('```')) {
+        cleaned = cleaned.replace(/\s*```$/, '');
+    }
+    return cleaned;
 }
 
 /**
