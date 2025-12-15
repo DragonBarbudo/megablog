@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useSiteStore } from '~/stores/site';
-import { Mail, Phone, MapPin, CheckCircle, ChevronDown, ChevronUp } from 'lucide-vue-next';
+import { Mail, Phone, MapPin, CheckCircle, ChevronDown, ChevronUp, Loader2 } from 'lucide-vue-next';
+import { z } from 'zod';
 
 const siteStore = useSiteStore();
 const config = computed(() => siteStore.site?.theme_config?.contact_info || {});
@@ -8,6 +9,63 @@ const openFaq = ref<number | null>(null);
 
 const toggleFaq = (index: number) => {
     openFaq.value = openFaq.value === index ? null : index;
+}
+
+// Form State
+const form = ref({
+    name: '',
+    company: '',
+    email: '',
+    phone: '',
+    message: ''
+});
+
+const errors = ref<Record<string, string>>({});
+const status = ref<'idle' | 'loading' | 'success' | 'error'>('idle');
+const statusMessage = ref('');
+
+// Schema (Client-side validation matching server)
+const schema = z.object({
+  name: z.string().min(2, 'El nombre es muy corto'),
+  email: z.string().email('Email inválido'),
+  phone: z.string().optional(),
+  company: z.string().optional(),
+  message: z.string().min(10, 'El mensaje debe tener al menos 10 caracteres'),
+});
+
+const submitForm = async () => {
+    status.value = 'loading';
+    errors.value = {};
+    statusMessage.value = '';
+
+    // Client Validation
+    const result = schema.safeParse(form.value);
+    if (!result.success) {
+        const fieldErrors = result.error.flatten().fieldErrors;
+        for (const key in fieldErrors) {
+            errors.value[key] = fieldErrors[key]?.[0] || 'Error';
+        }
+        status.value = 'idle';
+        return;
+    }
+
+    try {
+        await $fetch('/api/contact', {
+            method: 'POST',
+            body: {
+                ...form.value,
+                site_id: siteStore.site?.id
+            }
+        });
+        
+        status.value = 'success';
+        statusMessage.value = '¡Mensaje enviado con éxito! Nos pondremos en contacto pronto.';
+        form.value = { name: '', company: '', email: '', phone: '', message: '' }; // Reset
+    } catch (e: any) {
+        status.value = 'error';
+        statusMessage.value = 'Ocurrió un error al enviar. Por favor intenta de nuevo.';
+        console.error(e);
+    }
 }
 </script>
 
@@ -25,36 +83,49 @@ const toggleFaq = (index: number) => {
               
               <!-- Contact Form & Info -->
               <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+                  <img v-if="siteStore.site?.theme_config?.logoUrl" :src="siteStore.site.theme_config.logoUrl" :alt="siteStore.site?.name" class="h-24 w-auto mb-8" />
                   <h2 class="text-2xl font-bold text-gray-900 mb-6">Envíanos un mensaje</h2>
                   
-                  <form class="space-y-4" @submit.prevent>
+                  <form class="space-y-4" @submit.prevent="submitForm">
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                              <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-                              <input type="text" class="w-full rounded-lg border-gray-300 focus:ring-primary focus:border-primary" placeholder="Tu nombre" />
+                              <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                              <input id="name" name="name" v-model="form.name" type="text" autocomplete="name" class="w-full rounded-lg border-gray-300 focus:ring-primary focus:border-primary" :class="{'border-red-500': errors.name}" placeholder="Tu nombre" />
+                              <p v-if="errors.name" class="text-red-500 text-xs mt-1">{{ errors.name }}</p>
                           </div>
                           <div>
-                              <label class="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
-                              <input type="text" class="w-full rounded-lg border-gray-300 focus:ring-primary focus:border-primary" placeholder="Nombre de empresa" />
+                              <label for="company" class="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
+                              <input id="company" name="company" v-model="form.company" type="text" autocomplete="organization" class="w-full rounded-lg border-gray-300 focus:ring-primary focus:border-primary" placeholder="Nombre de empresa" />
                           </div>
                       </div>
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                              <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                              <input type="email" class="w-full rounded-lg border-gray-300 focus:ring-primary focus:border-primary" placeholder="correo@ejemplo.com" />
+                              <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                              <input id="email" name="email" v-model="form.email" type="email" autocomplete="email" class="w-full rounded-lg border-gray-300 focus:ring-primary focus:border-primary" :class="{'border-red-500': errors.email}" placeholder="correo@ejemplo.com" />
+                              <p v-if="errors.email" class="text-red-500 text-xs mt-1">{{ errors.email }}</p>
                           </div>
                           <div>
-                              <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono / WhatsApp</label>
-                              <input type="tel" class="w-full rounded-lg border-gray-300 focus:ring-primary focus:border-primary" placeholder="+52 55..." />
+                              <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Teléfono / WhatsApp</label>
+                              <input id="phone" name="phone" v-model="form.phone" type="tel" autocomplete="tel" class="w-full rounded-lg border-gray-300 focus:ring-primary focus:border-primary" placeholder="+52 55..." />
                           </div>
                       </div>
                       <div>
-                           <label class="block text-sm font-medium text-gray-700 mb-1">Mensaje</label>
-                           <textarea rows="4" class="w-full rounded-lg border-gray-300 focus:ring-primary focus:border-primary" placeholder="¿En qué podemos ayudarte?"></textarea>
+                           <label for="message" class="block text-sm font-medium text-gray-700 mb-1">Mensaje</label>
+                           <textarea id="message" name="message" v-model="form.message" rows="4" class="w-full rounded-lg border-gray-300 focus:ring-primary focus:border-primary" :class="{'border-red-500': errors.message}" placeholder="¿En qué podemos ayudarte?"></textarea>
+                           <p v-if="errors.message" class="text-red-500 text-xs mt-1">{{ errors.message }}</p>
                       </div>
-                      <button class="w-full bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary-600 transition shadow-lg shadow-primary/30">
-                          Enviar Mensaje
+                      
+                      <button :disabled="status === 'loading'" class="w-full bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary-600 transition shadow-lg shadow-primary/30 flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                          <Loader2 v-if="status === 'loading'" class="w-5 h-5 animate-spin mr-2" />
+                          {{ status === 'loading' ? 'Enviando...' : 'Enviar Mensaje' }}
                       </button>
+
+                      <div v-if="status === 'success'" class="p-4 bg-green-50 text-green-700 rounded-xl flex items-center gap-2">
+                          <CheckCircle class="w-5 h-5" /> {{ statusMessage }}
+                      </div>
+                      <div v-if="status === 'error'" class="p-4 bg-red-50 text-red-700 rounded-xl">
+                          {{ statusMessage }}
+                      </div>
                   </form>
 
                   <div class="mt-10 pt-10 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1,46 +1,39 @@
 
-import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
-import { generateText, generateImage } from '../app/server/utils/ai';
-import { processAndUploadImage } from '../app/server/utils/storage';
-import { sanitizeContent, processContentImages } from '../app/server/utils/content-processor';
+import { generateText, generateImage } from '~/server/utils/ai';
+import { sanitizeContent, processContentImages } from '~/server/utils/content-processor';
+import { processAndUploadImage } from '~/server/utils/storage';
 
-// Initialize Supabase Admin Client
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!;
+export default defineEventHandler(async (event) => {
+    const config = useRuntimeConfig();
+    const query = getQuery(event);
 
-if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY');
-    process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-async function main() {
-    const args = process.argv.slice(2);
-    if (args.length < 2) {
-        console.log('Usage: npx tsx scripts/add-post.ts <domain> <topic/title>');
-        process.exit(1);
+    // Auth Check
+    if (query.token !== config.cloudflareToken) {
+        throw createError({ statusCode: 401, statusMessage: 'Unauthorized' });
     }
 
-    const [domain, topic] = args;
-    console.log(`🚀 Adding post to: ${domain} - Topic: ${topic}`);
+    const domain = query.domain as string;
+    const topic = query.topic as string;
+
+    if (!domain || !topic) {
+        throw createError({ statusCode: 400, statusMessage: 'Missing domain or topic' });
+    }
+
+    // Initialize Supabase Service Client
+    const serviceClient = await serverSupabaseServiceRole(event);
 
     // 1. Get Site
-    const { data: site, error: siteError } = await supabase
+    const { data: site, error: siteError } = await serviceClient
         .from('sites')
         .select('id, name, description')
         .eq('domain', domain)
         .single();
 
     if (siteError || !site) {
-        console.error(`Site '${domain}' not found.`);
-        process.exit(1);
+        throw createError({ statusCode: 404, statusMessage: `Site '${domain}' not found` });
     }
 
     // 2. Generate Title/Idea
-    // If the input looks like a full title, use it. If it's a topic, generate a title.
-    console.log('... Generating Title & Idea');
     const ideaPrompt = `Generate a catchy blog post title and slug for the topic "${topic}" for a blog named "${site.name}". 
     Return JSON: { title, slug, excerpt }. Return ONLY valid JSON.`;
 
@@ -48,15 +41,10 @@ async function main() {
     const idea = JSON.parse(ideaRaw?.replace(/```json|```/g, '').trim() || '{}');
 
     if (!idea.title) {
-        console.error('Failed to generate post idea.');
-        process.exit(1);
+        throw createError({ statusCode: 500, statusMessage: 'Failed to generate post idea' });
     }
 
-    console.log(`... Generated: "${idea.title}"`);
-
     // 3. Generate Content
-    console.log('... Generating Content');
-    // We request specific structure for images
     const contentPrompt = `Write a comprehensive blog post in Markdown format for the title: "${idea.title}". 
     Context: Blog is about "${site.description}". 
     Make it SEO optimized, at least 800 words in mexican spanish. Use ## and ### for headers.
@@ -68,16 +56,15 @@ async function main() {
 
     const rawContent = await generateText(contentPrompt);
 
-    // Sanitize (remove code blocks)
+    // Sanitize
     const sanitizedContent = sanitizeContent(rawContent || '');
 
     // 4. Generate Main Cover Image
-    console.log('... Generating Main Cover Image');
+    // Using negative prompts as requested
     const falImageUrl = await generateImage(`Hyper-realistic photography, ${idea.title}, ${site.name}, high quality, 8k, cinematic lighting, no text, no letters, no sign, no watermark, clean image`);
     let finalCoverUrl = falImageUrl;
 
     if (falImageUrl) {
-        // Fal.ai z-image/turbo returns a URL.
         const filename = `${Date.now()}-${idea.slug}-cover`;
         const uploadedUrl = await processAndUploadImage(falImageUrl, filename);
         if (uploadedUrl) {
@@ -86,26 +73,28 @@ async function main() {
     }
 
     // 5. Process Inline Images
-    console.log('... Processing Inline Images');
     const finalContent = await processContentImages(sanitizedContent, site.name);
 
     // 6. Insert Post
-    const { error: postError } = await supabase.from('posts').upsert({
+    const { error: postError } = await serviceClient.from('posts').upsert({
         site_id: site.id,
         slug: idea.slug,
         title: idea.title,
         excerpt: idea.excerpt,
-        content: finalContent, // Content now has inline images, but NO duplicate cover image at top
+        content: finalContent,
         cover_image_url: finalCoverUrl,
         published_at: new Date().toISOString(),
         seo_tags: { title: idea.title, description: idea.excerpt }
     }, { onConflict: 'site_id, slug' });
 
     if (postError) {
-        console.error('Error saving post:', postError);
-    } else {
-        console.log(`✅ Post added successfully: /blog/${idea.slug}`);
+        throw createError({ statusCode: 500, statusMessage: postError.message });
     }
-}
 
-main().catch(console.error);
+    return {
+        success: true,
+        site: domain,
+        post_url: `/blog/${idea.slug}`,
+        title: idea.title
+    };
+});

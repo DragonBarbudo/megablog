@@ -24,16 +24,13 @@ export const generateText = async (prompt: string, model = 'gpt-4o') => {
     }
 };
 
-export const generateImage = async (prompt: string) => {
+export const generateImage = async (prompt: string, options?: { image_size?: string }) => {
     try {
         // Using 'fal-ai/z-image/turbo' as requested
         const result: any = await fal.subscribe('fal-ai/z-image/turbo', {
             input: {
                 prompt: prompt,
-                // image_size: 'landscape_16_9', // z-image might have different params?
-                // Standard params usually work, but let's check basic ones. 
-                // Documentation passed by user shows just 'prompt' in the example.
-                // We will stick to simple prompt first.
+                image_size: options?.image_size || 'landscape_16_9',
             },
             logs: true,
             onQueueUpdate: (update) => {
@@ -42,11 +39,6 @@ export const generateImage = async (prompt: string) => {
                 }
             },
         });
-
-        // result.data.images is array of { url: string, ... }
-        // For z-image/turbo, the structure is { data: { images: [...] } }
-        // But for other models it might be just { images: [...] }? 
-        // Let's handle both or check 'data'.
 
         const images = result.data?.images || result.images;
 
@@ -57,5 +49,27 @@ export const generateImage = async (prompt: string) => {
     } catch (error) {
         console.error('Fal.ai Error:', error);
         throw error;
+    }
+}
+
+export const removeBackground = async (imageUrl: string) => {
+    try {
+        console.log('... Removing Background from Logo');
+        const result: any = await fal.subscribe('fal-ai/imageutils/rembg', {
+            input: {
+                image_url: imageUrl
+            },
+            logs: true,
+        });
+
+        // rembg usually returns { image: { url: ... } }
+        const outputImage = result.data?.image || result.image;
+        if (outputImage && outputImage.url) {
+            return outputImage.url;
+        }
+        return null;
+    } catch (error) {
+        console.error('Fal.ai Rembg Error:', error);
+        return null;
     }
 }

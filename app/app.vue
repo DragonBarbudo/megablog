@@ -38,7 +38,7 @@ useHead({
 </script>
 
 <template>
-  <div class="min-h-screen bg-surface text-text font-sans">
+  <div class="min-h-screen bg-surface text-text font-sans dark:bg-gray-950 dark:text-gray-100 transition-colors duration-300">
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>

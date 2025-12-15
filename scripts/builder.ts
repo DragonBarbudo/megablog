@@ -56,7 +56,7 @@ async function main() {
 
     // ... Generate About/Team Image
     console.log('... Generating Brand/About Image');
-    const aboutImageUrl = await generateImage(`Professional team photo or modern office for ${name}, ${niche}, warm lighting, photorealistic, high resolution`);
+    const aboutImageUrl = await generateImage(`Professional team photo or modern office for ${name}, ${niche}, warm lighting, photorealistic, high resolution, no text, no letters, no sign, no watermark, clean image`);
     let finalAboutImageUrl = aboutImageUrl;
 
     if (aboutImageUrl) {

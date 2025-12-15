@@ -22,6 +22,7 @@ useHead({
           
           <div class="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-gray-100 prose prose-lg prose-slate mx-auto
                prose-headings:font-bold prose-a:text-primary">
+              <img v-if="siteStore.site?.theme_config?.logoUrl" :src="siteStore.site.theme_config.logoUrl" :alt="siteStore.site?.name" class="h-40 w-auto mx-auto mb-10 not-prose" />
               <div v-html="md.render(page.content)"></div>
           </div>
       </div>

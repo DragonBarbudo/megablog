@@ -41,7 +41,7 @@ export async function processContentImages(content: string, context: string): Pr
         console.log(`   - Processing placeholder: "${promptDescription}"`);
 
         // Enhance prompt
-        const fullPrompt = `Hyper-realistic photography, ${promptDescription}, ${context}, high quality, 8k, cinematic lighting`;
+        const fullPrompt = `Hyper-realistic photography, ${promptDescription}, ${context}, high quality, 8k, cinematic lighting, no text, no letters, no sign, no watermark, clean image`;
 
         try {
             const falUrl = await generateImage(fullPrompt);

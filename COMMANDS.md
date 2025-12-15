@@ -61,5 +61,29 @@ Starts the local Nuxt development server.
 ```bash
 npm run dev
 ```
-The site will be available at `http://localhost:3000` (or 3001 if port is taken).
-To test different domains locally, you may need to use tools to modify headers or run on different ports.
+
+---
+
+## 🌐 6. Remote API Control (Cron)
+You can trigger article generation remotely using a GET request (e.g. from a cron job or browser).
+
+**Add a specific post:**
+```
+https://your-site.netlify.app/api/cron/add-post?token=YOUR_CLOUDFLARE_TOKEN&domain=example.com&topic=Your_Topic_Here
+```
+*Requires `CLOUDFLARE_TOKEN` to be set in your Netlify environment variables.*
+
+---
+
+## 🎨 7. Generate/Update Logo
+Generates a new minimalist logo for an existing site using AI and updates the configuration.
+
+```bash
+npx tsx scripts/update-logo.ts <domain> "[optional prompt]"
+```
+
+**Example:**
+```bash
+npx tsx scripts/update-logo.ts tech-blog.com "Abstract blue geometric shape, modern, flat"
+```
+

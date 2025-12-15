@@ -65,3 +65,22 @@ create table public.subscribers (
 alter table public.subscribers enable row level security;
 -- Only service role can select/delete (for sending emails etc), anon can insert (subscribe)
 create policy "Allow anon insert to subscribers" on public.subscribers for insert with check (true);
+
+-- Contacts Table
+create table public.contacts (
+  id uuid default uuid_generate_v4() primary key,
+  site_id uuid references public.sites(id) on delete cascade not null,
+  name text not null,
+  email text not null,
+  phone text,
+  company text,
+  message text not null,
+  created_at timestamp with time zone default now()
+);
+
+alter table public.contacts enable row level security;
+
+-- Allow anyone to submit a contact form
+create policy "Allow public insert to contacts" on public.contacts for insert with check (true);
+-- Service role has full access
+create policy "Allow service role full access to contacts" on public.contacts for all using (true) with check (true);

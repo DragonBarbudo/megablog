@@ -18,29 +18,33 @@ const getIcon = (network: string) => {
 </script>
 
 <template>
-  <div class="flex flex-col min-h-screen bg-gray-50 font-sans selection:bg-primary selection:text-white">
+  <div class="flex flex-col min-h-screen bg-gray-50 font-sans selection:bg-primary selection:text-white dark:bg-gray-950 dark:text-gray-100">
     <!-- Header -->
-    <header class="sticky top-0 z-50 w-full border-b border-gray-200/50 bg-white/80 backdrop-blur-xl transition-all supports-[backdrop-filter]:bg-white/60">
-      <div class="container mx-auto px-6 h-16 flex items-center justify-between">
+    <header class="sticky top-0 z-50 w-full border-b border-gray-200/50 bg-white/80 backdrop-blur-xl transition-all supports-[backdrop-filter]:bg-white/60 dark:bg-gray-900/80 dark:border-gray-800 dark:supports-[backdrop-filter]:bg-gray-900/60">
+      <div class="container mx-auto px-6 h-24 flex items-center justify-between">
         <NuxtLink to="/" class="flex items-center gap-2 group">
-          <img v-if="siteStore.site?.theme_config?.logoUrl" :src="siteStore.site.theme_config.logoUrl" :alt="siteStore.site?.name" class="h-8 w-auto" />
+          <img v-if="siteStore.site?.theme_config?.logoUrl" :src="siteStore.site.theme_config.logoUrl" :alt="siteStore.site?.name" class="h-20 w-auto" />
           <span v-else class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent group-hover:opacity-80 transition">
             {{ siteStore.site?.name || 'My Blog' }}
           </span>
         </NuxtLink>
         
         <nav class="hidden md:flex items-center space-x-8">
-          <NuxtLink to="/" class="text-sm font-medium text-gray-700 hover:text-primary transition-colors">Inicio</NuxtLink>
-          <NuxtLink to="/nosotros" class="text-sm font-medium text-gray-700 hover:text-primary transition-colors">Nosotros</NuxtLink>
-          <NuxtLink to="/experiencias" class="text-sm font-medium text-gray-700 hover:text-primary transition-colors">Experiencias</NuxtLink>
-          <NuxtLink to="/contacto" class="text-sm font-medium text-gray-700 hover:text-primary transition-colors">Contacto</NuxtLink>
+          <NuxtLink to="/" class="text-sm font-medium text-gray-700 hover:text-primary transition-colors dark:text-gray-200 dark:hover:text-primary-300">Inicio</NuxtLink>
+          <NuxtLink to="/nosotros" class="text-sm font-medium text-gray-700 hover:text-primary transition-colors dark:text-gray-200 dark:hover:text-primary-300">Nosotros</NuxtLink>
+          <NuxtLink to="/experiencias" class="text-sm font-medium text-gray-700 hover:text-primary transition-colors dark:text-gray-200 dark:hover:text-primary-300">Experiencias</NuxtLink>
+          <NuxtLink to="/contacto" class="text-sm font-medium text-gray-700 hover:text-primary transition-colors dark:text-gray-200 dark:hover:text-primary-300">Contacto</NuxtLink>
+          <ThemeToggle />
         </nav>
         
         <!-- Mobile Menu Button (Placeholder for now) -->
-        <button class="md:hidden text-gray-700">
-            <span class="sr-only">Menu</span>
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
-        </button>
+        <div class="md:hidden flex items-center gap-4">
+            <ThemeToggle />
+            <button class="text-gray-700 dark:text-gray-200">
+                <span class="sr-only">Menu</span>
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </div>
       </div>
     </header>
 
@@ -50,13 +54,14 @@ const getIcon = (network: string) => {
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white border-t border-gray-100">
+    <footer class="bg-white border-t border-gray-100 dark:bg-gray-900 dark:border-gray-800">
       <div class="container mx-auto px-6 py-12">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
           <!-- Brand Info -->
           <div class="text-center md:text-left">
-             <h3 class="font-bold text-lg text-gray-900">{{ siteStore.site?.name }}</h3>
-             <p class="text-sm text-gray-500 mt-1 mb-4">{{ siteStore.site?.description }}</p>
+             <img v-if="siteStore.site?.theme_config?.logoUrl" :src="siteStore.site.theme_config.logoUrl" :alt="siteStore.site?.name" class="h-32 w-auto mx-auto md:mx-0 mb-6" />
+             <h3 class="font-bold text-lg text-gray-900 dark:text-white" v-else>{{ siteStore.site?.name }}</h3>
+             <p class="text-sm text-gray-500 mt-1 mb-4 dark:text-gray-400">{{ siteStore.site?.description }}</p>
              
              <!-- Social Icons -->
              <div class="flex justify-center md:justify-start space-x-4 mb-6" v-if="siteStore.site?.socials">
