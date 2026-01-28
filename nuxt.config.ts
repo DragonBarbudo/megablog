@@ -38,5 +38,10 @@ export default defineNuxtConfig({
       supabaseUrl: process.env.SUPABASE_URL,
       supabaseKey: process.env.SUPABASE_KEY
     }
+  },
+  routeRules: {
+    '/': { prerender: true },
+    '/**': { prerender: true }, // Prerender everything
+    '/api/**': { isr: false }   // Ensure APIs remain as functions
   }
 })
